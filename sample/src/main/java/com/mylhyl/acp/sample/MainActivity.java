@@ -1,7 +1,11 @@
 package com.mylhyl.acp.sample;
 
 import android.Manifest;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.telephony.TelephonyManager;
 import android.view.View;
@@ -10,7 +14,6 @@ import android.widget.Toast;
 import com.mylhyl.acp.Acp;
 import com.mylhyl.acp.AcpListener;
 import com.mylhyl.acp.AcpOptions;
-import com.mylhyl.takephoto.TakePhotoUtil;
 
 import java.io.File;
 import java.util.List;
@@ -23,6 +26,29 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        Acp.getInstance(this).request(new AcpOptions.Builder()
+                        .setPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE
+                                , Manifest.permission.READ_PHONE_STATE
+                                , Manifest.permission.SEND_SMS)
+                /*以下为自定义提示语、按钮文字
+                .setDeniedMessage()
+                .setDeniedCloseBtn()
+                .setDeniedSettingBtn()
+                .setRationalMessage()
+                .setRationalBtn()*/
+                        .build(),
+                new AcpListener() {
+                    @Override
+                    public void onGranted() {
+                        writeSD();
+                        getIMEI();
+                    }
+
+                    @Override
+                    public void onDenied(List<String> permissions) {
+                        makeText(permissions.toString() + "权限拒绝");
+                    }
+                });
     }
 
     public void onClickFragment(View v) {
@@ -31,12 +57,15 @@ public class MainActivity extends AppCompatActivity {
 
     public void onClickAll(View v) {
         Acp.getInstance(this).request(new AcpOptions.Builder()
-                        .setPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_PHONE_STATE)
-//                .setDeniedMessage()
-//                .setDeniedCloseBtn()
-//                .setDeniedSettingBtn()
-//                .setRationalMessage()
-//                .setRationalBtn()
+                        .setPermissions(Manifest.permission.WRITE_EXTERNAL_STORAGE
+                                , Manifest.permission.READ_PHONE_STATE
+                                , Manifest.permission.SEND_SMS)
+                /*以下为自定义提示语、按钮文字
+                .setDeniedMessage()
+                .setDeniedCloseBtn()
+                .setDeniedSettingBtn()
+                .setRationalMessage()
+                .setRationalBtn()*/
                         .build(),
                 new AcpListener() {
                     @Override
@@ -115,6 +144,33 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void onClickCallPhone(View view) {
+        Acp.getInstance(this).request(new AcpOptions.Builder().setPermissions(Manifest.permission.CALL_PHONE).build(),
+                new AcpListener() {
+                    @Override
+                    public void onGranted() {
+                        //注意：不用用带参的构造方法 否则 android studio 环境出错，提示要你检查授权
+
+/*
+                        Intent intentCall = new Intent(Intent.ACTION_CALL, Uri.parse("tel:13800138000"));
+                        intentCall.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intentCall);
+*/
+
+                        Intent intent = new Intent();
+                        intent.setAction(Intent.ACTION_CALL);
+                        intent.setData(Uri.parse("tel:13800138000"));
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(intent);
+                    }
+
+                    @Override
+                    public void onDenied(List<String> permissions) {
+                        makeText(permissions.toString() + "权限拒绝");
+                    }
+                });
+
+    }
 
 //
 //    @Override
@@ -146,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
 //    }
 
     private void writeSD() {
-        File acpDir = TakePhotoUtil.getCacheDir("acp", this);
+        File acpDir = getCacheDir("acp", this);
         if (acpDir != null)
             makeText("写SD成功：" + acpDir.getAbsolutePath());
     }
@@ -155,6 +211,30 @@ public class MainActivity extends AppCompatActivity {
         TelephonyManager tm = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
         if (tm != null)
             makeText("读imei成功：" + tm.getDeviceId());
+    }
+
+    public static File getCacheDir(String dirName, Context context) {
+        File result;
+        if (existsSdcard()) {
+            File cacheDir = context.getExternalCacheDir();
+            if (cacheDir == null) {
+                result = new File(Environment.getExternalStorageDirectory(),
+                        "Android/data/" + context.getPackageName() + "/cache/" + dirName);
+            } else {
+                result = new File(cacheDir, dirName);
+            }
+        } else {
+            result = new File(context.getCacheDir(), dirName);
+        }
+        if (result.exists() || result.mkdirs()) {
+            return result;
+        } else {
+            return null;
+        }
+    }
+
+    public static Boolean existsSdcard() {
+        return Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED);
     }
 
     private void makeText(String text) {

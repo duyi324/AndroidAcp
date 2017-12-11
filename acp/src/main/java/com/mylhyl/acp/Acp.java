@@ -1,8 +1,6 @@
 package com.mylhyl.acp;
 
-import android.app.Activity;
 import android.content.Context;
-import android.content.Intent;
 
 /**
  * Created by hupei on 2016/4/26.
@@ -13,9 +11,12 @@ public class Acp {
     private AcpManager mAcpManager;
 
     public static Acp getInstance(Context context) {
-        if (mInstance == null) {
-            mInstance = new Acp(context);
-        }
+        if (mInstance == null)
+            synchronized (Acp.class) {
+                if (mInstance == null) {
+                    mInstance = new Acp(context);
+                }
+            }
         return mInstance;
     }
 
@@ -23,21 +24,19 @@ public class Acp {
         mAcpManager = new AcpManager(context.getApplicationContext());
     }
 
+    /**
+     * 开始请求
+     *
+     * @param options
+     * @param acpListener
+     */
     public void request(AcpOptions options, AcpListener acpListener) {
-        if (options == null) new RuntimeException("AcpOptions is null...");
-        if (acpListener == null) new RuntimeException("AcpListener is null...");
+        if (options == null) new NullPointerException("AcpOptions is null...");
+        if (acpListener == null) new NullPointerException("AcpListener is null...");
         mAcpManager.request(options, acpListener);
     }
 
-    void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        mAcpManager.onRequestPermissionsResult(requestCode, permissions, grantResults);
-    }
-
-    void onActivityResult(int requestCode, int resultCode, Intent data) {
-        mAcpManager.onActivityResult(requestCode, resultCode, data);
-    }
-
-    void requestPermissions(Activity activity) {
-        mAcpManager.requestPermissions(activity);
+    AcpManager getAcpManager() {
+        return mAcpManager;
     }
 }
